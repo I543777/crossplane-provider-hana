@@ -31,8 +31,10 @@ GO111MODULE = on
 KIND_VERSION ?= v0.30.0
 KIND_NODE_IMAGE_TAG ?= v1.34.0
 
-# Crossplane v2 e2e setup. Keep this below 2.2.0 until the local package
-# sideload path is validated against Crossplane's newer package cache lookup.
+# Crossplane v2 e2e setup. Keep the CI default below 2.2.0: Crossplane 2.2+
+# resolves spec.package through a registry before its local cache, which breaks
+# the local :latest xpkg sideload path. See SAP/crossplane-provider-btp
+# .github/workflows/check-e2e-tests.lib.yaml for the matching constraint.
 export CROSSPLANE_VERSION ?= 2.1.8
 USE_HELM = true
 USE_HELM3 = true
