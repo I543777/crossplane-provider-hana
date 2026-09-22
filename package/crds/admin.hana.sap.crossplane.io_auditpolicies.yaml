@@ -89,6 +89,25 @@ spec:
                     - WARNING
                     - INFO
                     type: string
+                  auditPrincipalUserGroup:
+                    description: |-
+                      AuditPrincipalUserGroup is an optional user group the audit policy applies
+                      to. It maps to the "FOR PRINCIPALS USERGROUP <usergroup>" clause of the
+                      CREATE AUDIT POLICY statement. It is mutually exclusive with
+                      AuditPrincipals.
+                    pattern: ^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$
+                    type: string
+                  auditPrincipals:
+                    description: |-
+                      AuditPrincipals is an optional list of users the audit policy applies to.
+                      It maps to the "FOR PRINCIPALS <user1>, <user2>" clause of the
+                      CREATE AUDIT POLICY statement. It is mutually exclusive with
+                      AuditPrincipalUserGroup.
+                    items:
+                      pattern: ^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
                   auditStatus:
                     default: ALL
                     enum:

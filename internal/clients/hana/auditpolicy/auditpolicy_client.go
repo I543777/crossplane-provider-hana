@@ -159,9 +159,27 @@ func prepareCreateSql(parameters *v1alpha1.AuditPolicyParameters) string {
 		}
 	}
 	query = strings.TrimSuffix(query, ",")
+
+	query += preparePrincipalsClause(parameters)
+
 	query += fmt.Sprintf(" LEVEL %s TRAIL TYPE TABLE RETENTION %d", parameters.AuditLevel, *parameters.AuditTrailRetention)
 
 	return query
+}
+
+// preparePrincipalsClause builds the optional "FOR PRINCIPALS" clause of a
+// CREATE AUDIT POLICY statement. It supports restricting the policy either to a
+// user group ("FOR PRINCIPALS USERGROUP <usergroup>") or to an explicit list of
+// users ("FOR PRINCIPALS <user1>, <user2>"). The user group takes precedence if
+// both are set. An empty string is returned when no principals are configured.
+func preparePrincipalsClause(parameters *v1alpha1.AuditPolicyParameters) string {
+	if parameters.AuditPrincipalUserGroup != "" {
+		return fmt.Sprintf(" FOR PRINCIPALS USERGROUP %s", parameters.AuditPrincipalUserGroup)
+	}
+	if len(parameters.AuditPrincipals) > 0 {
+		return fmt.Sprintf(" FOR PRINCIPALS %s", strings.Join(parameters.AuditPrincipals, ", "))
+	}
+	return ""
 }
 
 func getSelectSql() string {

@@ -326,12 +326,14 @@ func buildObservedParameters(cr *v1alpha1.AuditPolicy) *v1alpha1.AuditPolicyObse
 
 func buildDesiredParameters(cr *v1alpha1.AuditPolicy) *v1alpha1.AuditPolicyParameters {
 	return &v1alpha1.AuditPolicyParameters{
-		PolicyName:          strings.ToUpper(cr.Spec.ForProvider.PolicyName),
-		AuditStatus:         strings.ToUpper(cr.Spec.ForProvider.AuditStatus),
-		AuditActions:        utils.ArrayToUpper(cr.Spec.ForProvider.AuditActions),
-		AuditLevel:          strings.ToUpper(cr.Spec.ForProvider.AuditLevel),
-		AuditTrailRetention: cr.Spec.ForProvider.AuditTrailRetention,
-		Enabled:             cr.Spec.ForProvider.Enabled,
+		PolicyName:              strings.ToUpper(cr.Spec.ForProvider.PolicyName),
+		AuditStatus:             strings.ToUpper(cr.Spec.ForProvider.AuditStatus),
+		AuditActions:            utils.ArrayToUpper(cr.Spec.ForProvider.AuditActions),
+		AuditLevel:              strings.ToUpper(cr.Spec.ForProvider.AuditLevel),
+		AuditPrincipals:         utils.ArrayToUpper(cr.Spec.ForProvider.AuditPrincipals),
+		AuditPrincipalUserGroup: strings.ToUpper(cr.Spec.ForProvider.AuditPrincipalUserGroup),
+		AuditTrailRetention:     cr.Spec.ForProvider.AuditTrailRetention,
+		Enabled:                 cr.Spec.ForProvider.Enabled,
 	}
 }
 

@@ -543,3 +543,64 @@ func TestRecreatePolicy(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildDesiredParameters(t *testing.T) {
+	cases := map[string]struct {
+		reason string
+		cr     *v1alpha1.AuditPolicy
+		want   *v1alpha1.AuditPolicyParameters
+	}{
+		"UserGroupPrincipals": {
+			reason: "The desired parameters should carry and upper-case the principal user group",
+			cr: &v1alpha1.AuditPolicy{
+				Spec: v1alpha1.AuditPolicySpec{
+					ForProvider: v1alpha1.AuditPolicyParameters{
+						PolicyName:              "signavio_technical_user_connect",
+						AuditStatus:             "successful",
+						AuditActions:            []string{"connect"},
+						AuditPrincipalUserGroup: "technical_user_group",
+						AuditLevel:              "info",
+					},
+				},
+			},
+			want: &v1alpha1.AuditPolicyParameters{
+				PolicyName:              "SIGNAVIO_TECHNICAL_USER_CONNECT",
+				AuditStatus:             "SUCCESSFUL",
+				AuditActions:            []string{"CONNECT"},
+				AuditPrincipals:         []string{},
+				AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
+				AuditLevel:              "INFO",
+			},
+		},
+		"ListPrincipals": {
+			reason: "The desired parameters should carry and upper-case the principal user list",
+			cr: &v1alpha1.AuditPolicy{
+				Spec: v1alpha1.AuditPolicySpec{
+					ForProvider: v1alpha1.AuditPolicyParameters{
+						PolicyName:      "demo_audit_policy",
+						AuditStatus:     "successful",
+						AuditActions:    []string{"connect"},
+						AuditPrincipals: []string{"user_a", "user_b"},
+						AuditLevel:      "info",
+					},
+				},
+			},
+			want: &v1alpha1.AuditPolicyParameters{
+				PolicyName:      "DEMO_AUDIT_POLICY",
+				AuditStatus:     "SUCCESSFUL",
+				AuditActions:    []string{"CONNECT"},
+				AuditPrincipals: []string{"USER_A", "USER_B"},
+				AuditLevel:      "INFO",
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := buildDesiredParameters(tc.cr)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("\n%s\nbuildDesiredParameters(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+		})
+	}
+}

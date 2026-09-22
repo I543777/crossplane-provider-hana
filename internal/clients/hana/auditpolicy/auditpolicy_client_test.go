@@ -176,6 +176,85 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestPrepareCreateSql(t *testing.T) {
+	retention := func(i int) *int { return &i }
+
+	type args struct {
+		parameters *v1alpha1.AuditPolicyParameters
+	}
+
+	cases := map[string]struct {
+		reason string
+		args   args
+		want   string
+	}{
+		"NoPrincipals": {
+			reason: "The statement should not contain a FOR PRINCIPALS clause when no principals are configured",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:          "DEMO_AUDIT_POLICY",
+					AuditStatus:         "ALL",
+					AuditActions:        []string{"GRANT ANY", "REVOKE ANY"},
+					AuditLevel:          "INFO",
+					AuditTrailRetention: retention(30),
+				},
+			},
+			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING ALL GRANT ANY, REVOKE ANY LEVEL INFO TRAIL TYPE TABLE RETENTION 30",
+		},
+		"UserGroup": {
+			reason: "The statement should contain a FOR PRINCIPALS USERGROUP clause when a user group is configured",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:              "SIGNAVIO_TECHNICAL_USER_CONNECT",
+					AuditStatus:             "SUCCESSFUL",
+					AuditActions:            []string{"CONNECT"},
+					AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
+					AuditLevel:              "INFO",
+					AuditTrailRetention:     retention(180),
+				},
+			},
+			want: "CREATE AUDIT POLICY SIGNAVIO_TECHNICAL_USER_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+		},
+		"Principals": {
+			reason: "The statement should contain a FOR PRINCIPALS clause when a list of users is configured",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:          "DEMO_AUDIT_POLICY",
+					AuditStatus:         "SUCCESSFUL",
+					AuditActions:        []string{"CONNECT"},
+					AuditPrincipals:     []string{"USER_A", "USER_B"},
+					AuditLevel:          "INFO",
+					AuditTrailRetention: retention(180),
+				},
+			},
+			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USER_A, USER_B LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+		},
+		"UserGroupTakesPrecedence": {
+			reason: "The user group should take precedence when both principals and a user group are configured",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:              "DEMO_AUDIT_POLICY",
+					AuditStatus:             "SUCCESSFUL",
+					AuditActions:            []string{"CONNECT"},
+					AuditPrincipals:         []string{"USER_A"},
+					AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
+					AuditLevel:              "INFO",
+					AuditTrailRetention:     retention(180),
+				},
+			},
+			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := prepareCreateSql(tc.args.parameters)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("\n%s\nprepareCreateSql(...): -want, +got:\n%s\n", tc.reason, diff)
+			}
+		})
+	}
+}
+
 func TestRecreatePolicy(t *testing.T) {
 	errBoom := errors.New("boom")
 

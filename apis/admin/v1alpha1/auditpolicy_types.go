@@ -29,6 +29,23 @@ type AuditPolicyParameters struct {
 	// +kubebuilder:validation:Enum:=EMERGENCY;ALERT;CRITICAL;WARNING;INFO
 	AuditLevel string `json:"auditLevel,omitempty"`
 
+	// AuditPrincipals is an optional list of users the audit policy applies to.
+	// It maps to the "FOR PRINCIPALS <user1>, <user2>" clause of the
+	// CREATE AUDIT POLICY statement. It is mutually exclusive with
+	// AuditPrincipalUserGroup.
+	// +kubebuilder:validation:items:Pattern:=`^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$`
+	// +listType=set
+	// +kubebuilder:validation:Optional
+	AuditPrincipals []string `json:"auditPrincipals,omitempty"`
+
+	// AuditPrincipalUserGroup is an optional user group the audit policy applies
+	// to. It maps to the "FOR PRINCIPALS USERGROUP <usergroup>" clause of the
+	// CREATE AUDIT POLICY statement. It is mutually exclusive with
+	// AuditPrincipals.
+	// +kubebuilder:validation:Pattern:=`^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$`
+	// +kubebuilder:validation:Optional
+	AuditPrincipalUserGroup string `json:"auditPrincipalUserGroup,omitempty"`
+
 	// +kubebuilder:default:=7
 	AuditTrailRetention *int `json:"auditTrailRetention,omitempty"`
 

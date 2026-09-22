@@ -110,6 +110,11 @@ func (in *AuditPolicyParameters) DeepCopyInto(out *AuditPolicyParameters) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AuditPrincipals != nil {
+		in, out := &in.AuditPrincipals, &out.AuditPrincipals
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.AuditTrailRetention != nil {
 		in, out := &in.AuditTrailRetention, &out.AuditTrailRetention
 		*out = new(int)
