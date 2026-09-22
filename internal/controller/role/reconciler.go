@@ -7,7 +7,7 @@ package role
 import (
 	"context"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/SAP/crossplane-provider-hana/internal/clients/xsql"
@@ -115,7 +115,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	c.log.Info("Connecting to role resource", "name", cr.Name)
 
-	username := string(s.Data[xpv1.ResourceCredentialsSecretUserKey])
+	username := string(s.Data[xpv2.CredentialsSecretUserKey])
 
 	conn, err := c.db.Connect(ctx, s.Data)
 	if err != nil {
@@ -194,7 +194,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			"privileges contains role name(s) that must be moved to spec.forProvider.roles: %v", overlap)
 	}
 
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	isUpToDate := upToDate(observed, parameters)
 	c.log.Info("Observed role resource",
@@ -232,7 +232,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Creating role resource", "name", cr.Name, "roleName", cr.Spec.ForProvider.RoleName)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	parameters := buildDesiredParameters(cr)
 
@@ -338,7 +338,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	parameters := buildDesiredParameters(cr)
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 

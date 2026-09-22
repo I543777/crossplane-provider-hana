@@ -9,7 +9,7 @@ Copyright 2026 SAP SE or an SAP affiliate company and contributors.
 package v1alpha1
 
 import (
-	"github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -167,7 +167,7 @@ func (in *ProviderCredentials) DeepCopyInto(out *ProviderCredentials) {
 	*out = *in
 	if in.ConnectionSecretRef != nil {
 		in, out := &in.ConnectionSecretRef, &out.ConnectionSecretRef
-		*out = new(v1.SecretReference)
+		*out = new(v2.SecretReference)
 		**out = **in
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -146,7 +146,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	cr.Status.AtProvider.Certificates = observed.Certificates
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	c.log.Info("Observed certificate resource", "name", cr.Name, "certName", cr.Spec.ForProvider.Name)
 
@@ -165,7 +165,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Creating certificate resource", "name", cr.Name, "certName", cr.Spec.ForProvider.Name)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	certPEM, err := c.getCertificatePEM(ctx, cr.Spec.ForProvider.CertificateSecretRef)
 	if err != nil {
@@ -195,7 +195,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Deleting certificate resource", "name", cr.Name, "certName", cr.Spec.ForProvider.Name)
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	if err := c.client.Delete(ctx, &cr.Spec.ForProvider); err != nil {
 		c.log.Info("Error deleting certificate", "name", cr.Name, "error", err)
@@ -206,7 +206,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalDelete{}, nil
 }
 
-func (c *external) getCertificatePEM(ctx context.Context, ref *xpv1.SecretKeySelector) ([]byte, error) {
+func (c *external) getCertificatePEM(ctx context.Context, ref *xpv2.SecretKeySelector) ([]byte, error) {
 	if ref == nil {
 		return nil, errors.New("certificateSecretRef is required")
 	}

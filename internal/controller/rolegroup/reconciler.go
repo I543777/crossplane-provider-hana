@@ -7,7 +7,7 @@ package rolegroup
 import (
 	"context"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/SAP/crossplane-provider-hana/internal/clients/hana/rolegroup"
@@ -161,7 +161,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.RolegroupName = observed.RolegroupName
 	cr.Status.AtProvider.DisableRoleAdmin = observed.DisableRoleAdmin
 
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	isUpToDate := upToDate(observed, parameters)
 	c.log.Info("Observed rolegroup resource",
@@ -188,7 +188,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Creating rolegroup resource", "name", cr.Name, "rolegroupName", cr.Spec.ForProvider.RolegroupName)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	parameters := buildDesiredParameters(cr)
 
@@ -256,7 +256,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		RolegroupName: cr.Spec.ForProvider.RolegroupName,
 	}
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 

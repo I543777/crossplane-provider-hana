@@ -8,7 +8,7 @@ import (
 	"context"
 	"strings"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pkg/errors"
@@ -174,7 +174,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.Enabled = observed.Enabled
 	cr.Status.AtProvider.AuditActions = observed.AuditActions
 
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	isUpToDate := upToDate(observed, parameters)
 	c.log.Info("Observed auditpolicy resource",
@@ -206,7 +206,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		"AuditTrailRetention", parameters.AuditTrailRetention,
 		"enabled", parameters.Enabled)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	err := c.client.Create(ctx, parameters)
 
@@ -299,7 +299,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	parameters := buildDesiredParameters(cr)
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 

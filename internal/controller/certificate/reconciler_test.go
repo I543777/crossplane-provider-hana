@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"testing"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/test"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -92,8 +92,8 @@ func TestConnect(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Certificate{
 					Spec: v1alpha1.CertificateSpec{
-						ResourceSpec: xpv1.ResourceSpec{
-							ProviderConfigReference: &xpv1.Reference{},
+						ClusterManagedResourceSpec: xpv2.ClusterManagedResourceSpec{
+							ProviderConfigReference: &xpv2.Reference{},
 						},
 					},
 				},
@@ -109,8 +109,8 @@ func TestConnect(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Certificate{
 					Spec: v1alpha1.CertificateSpec{
-						ResourceSpec: xpv1.ResourceSpec{
-							ProviderConfigReference: &xpv1.Reference{},
+						ClusterManagedResourceSpec: xpv2.ClusterManagedResourceSpec{
+							ProviderConfigReference: &xpv2.Reference{},
 						},
 					},
 				},
@@ -123,7 +123,7 @@ func TestConnect(t *testing.T) {
 				kube: &test.MockClient{
 					MockGet: test.NewMockGetFn(nil, func(obj client.Object) error {
 						if pc, ok := obj.(*apisv1alpha1.ProviderConfig); ok {
-							pc.Spec.Credentials.ConnectionSecretRef = &xpv1.SecretReference{}
+							pc.Spec.Credentials.ConnectionSecretRef = &xpv2.SecretReference{}
 						}
 						if _, ok := obj.(*corev1.Secret); ok {
 							return errBoom
@@ -136,8 +136,8 @@ func TestConnect(t *testing.T) {
 			args: args{
 				mg: &v1alpha1.Certificate{
 					Spec: v1alpha1.CertificateSpec{
-						ResourceSpec: xpv1.ResourceSpec{
-							ProviderConfigReference: &xpv1.Reference{},
+						ClusterManagedResourceSpec: xpv2.ClusterManagedResourceSpec{
+							ProviderConfigReference: &xpv2.Reference{},
 						},
 					},
 				},
@@ -298,7 +298,7 @@ func TestCreate(t *testing.T) {
 					Spec: v1alpha1.CertificateSpec{
 						ForProvider: v1alpha1.CertificateParameters{
 							Name:                 "my-ca",
-							CertificateSecretRef: &xpv1.SecretKeySelector{SecretReference: xpv1.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
+							CertificateSecretRef: &xpv2.SecretKeySelector{SecretReference: xpv2.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
 						},
 					},
 				},
@@ -328,7 +328,7 @@ func TestCreate(t *testing.T) {
 					Spec: v1alpha1.CertificateSpec{
 						ForProvider: v1alpha1.CertificateParameters{
 							Name:                 "my-ca",
-							CertificateSecretRef: &xpv1.SecretKeySelector{SecretReference: xpv1.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
+							CertificateSecretRef: &xpv2.SecretKeySelector{SecretReference: xpv2.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
 						},
 					},
 				},
@@ -358,7 +358,7 @@ func TestCreate(t *testing.T) {
 					Spec: v1alpha1.CertificateSpec{
 						ForProvider: v1alpha1.CertificateParameters{
 							Name:                 "my-ca",
-							CertificateSecretRef: &xpv1.SecretKeySelector{SecretReference: xpv1.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
+							CertificateSecretRef: &xpv2.SecretKeySelector{SecretReference: xpv2.SecretReference{Namespace: "ns", Name: "secret"}, Key: "ca.crt"},
 						},
 					},
 				},

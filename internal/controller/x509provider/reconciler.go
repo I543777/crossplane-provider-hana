@@ -8,7 +8,7 @@ import (
 	"context"
 	"slices"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -159,7 +159,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	cr.Status.AtProvider = *observed
-	cr.Status.SetConditions(xpv1.Available())
+	cr.Status.SetConditions(xpv2.Available())
 
 	if !isUpToDate(parameters, *observed) {
 		return managed.ExternalObservation{
@@ -226,7 +226,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	parameters := cr.Spec.ForProvider.DeepCopy()
 
 	c.log.Info("Deleting X.509 provider", "name", cr.Name)
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	return managed.ExternalDelete{}, c.client.Delete(ctx, parameters)
 }

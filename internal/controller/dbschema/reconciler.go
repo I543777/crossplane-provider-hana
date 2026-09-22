@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -162,7 +162,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	c.log.Info("Observed dbschema resource",
 		"name", cr.Name,
@@ -192,7 +192,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		"schemaName", parameters.SchemaName,
 		"owner", parameters.Owner)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	err := c.client.Create(ctx, parameters)
 
@@ -236,7 +236,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		SchemaName: cr.Spec.ForProvider.SchemaName,
 	}
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 

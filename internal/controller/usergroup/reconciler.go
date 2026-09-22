@@ -7,7 +7,7 @@ package usergroup
 import (
 	"context"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/SAP/crossplane-provider-hana/internal/clients/hana/usergroup"
@@ -163,7 +163,7 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	cr.Status.AtProvider.DisableUserAdmin = observed.DisableUserAdmin
 	cr.Status.AtProvider.Parameters = observed.Parameters
 
-	cr.SetConditions(xpv1.Available())
+	cr.SetConditions(xpv2.Available())
 
 	isUpToDate := upToDate(observed, parameters)
 	c.log.Info("Observed usergroup resource",
@@ -198,7 +198,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Creating usergroup resource", "name", cr.Name, "usergroupName", cr.Spec.ForProvider.UsergroupName)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	parameters := buildDesiredParameters(cr)
 
@@ -289,7 +289,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		UsergroupName: cr.Spec.ForProvider.UsergroupName,
 	}
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 

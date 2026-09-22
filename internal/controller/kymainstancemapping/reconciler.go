@@ -11,12 +11,12 @@ import (
 	"fmt"
 
 	servicescloudsapv1 "github.com/SAP/sap-btp-service-operator/api/v1"
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -356,8 +356,8 @@ func (e *External) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		InstanceMappingName:        imName,
 		CredentialsSecretName:      secretName,
 		CredentialsSecretNamespace: ns,
-		InstanceMappingReady:       isConditionTrue(im.Status.Conditions, xpv1.TypeReady),
-		InstanceMappingSynced:      isConditionTrue(im.Status.Conditions, xpv1.TypeSynced),
+		InstanceMappingReady:       isConditionTrue(im.Status.Conditions, xpv2.TypeReady),
+		InstanceMappingSynced:      isConditionTrue(im.Status.Conditions, xpv2.TypeSynced),
 	}
 
 	// Propagate status from child InstanceMapping
@@ -374,7 +374,7 @@ func (e *External) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// Set conditions based on child status
 	if cr.Status.AtProvider.ChildResources.InstanceMappingReady {
-		cr.SetConditions(xpv1.Available())
+		cr.SetConditions(xpv2.Available())
 	}
 
 	return managed.ExternalObservation{
@@ -477,7 +477,7 @@ func (e *External) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		CredentialsSecretNamespace: ns,
 	}
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 	return managed.ExternalCreation{}, nil
 }
 
@@ -496,7 +496,7 @@ func (e *External) Delete(_ context.Context, mg resource.Managed) (managed.Exter
 		"name", cr.Name)
 
 	// Owner references will handle cascading delete of Secret and InstanceMapping
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 	return managed.ExternalDelete{}, nil
 }
 
@@ -511,7 +511,7 @@ func buildCredentialsJSON(creds hanacloud.AdminAPICredentials) []byte {
 }
 
 // isConditionTrue checks if a condition of the given type is True
-func isConditionTrue(conditions []xpv1.Condition, condType xpv1.ConditionType) bool {
+func isConditionTrue(conditions []xpv2.Condition, condType xpv2.ConditionType) bool {
 	for _, c := range conditions {
 		if c.Type == condType && c.Status == corev1.ConditionTrue {
 			return true

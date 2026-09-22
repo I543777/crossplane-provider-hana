@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/SAP/crossplane-provider-hana/internal/clients/hana/privilege"
@@ -160,7 +160,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 
 	c.log.Info("Connecting to user resource", "name", cr.Name)
 
-	username := string(secret.Data[xpv1.ResourceCredentialsSecretUserKey])
+	username := string(secret.Data[xpv2.CredentialsSecretUserKey])
 
 	conn, err := c.db.Connect(ctx, secret.Data)
 	if err != nil {
@@ -268,9 +268,9 @@ func (c *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 // whether an auth error was encountered during Read.
 func setAvailabilityCondition(cr *v1alpha1.User, authError error) {
 	if authError != nil {
-		cr.SetConditions(xpv1.Unavailable().WithMessage(authError.Error()))
+		cr.SetConditions(xpv2.Unavailable().WithMessage(authError.Error()))
 	} else {
-		cr.SetConditions(xpv1.Available())
+		cr.SetConditions(xpv2.Available())
 	}
 }
 
@@ -380,7 +380,7 @@ func (c *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	c.log.Info("Creating user resource", "name", cr.Name, "username", cr.Spec.ForProvider.Username)
 
-	cr.SetConditions(xpv1.Creating())
+	cr.SetConditions(xpv2.Creating())
 
 	parameters := &cr.Spec.ForProvider
 
@@ -744,7 +744,7 @@ func (c *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		Username: cr.Spec.ForProvider.Username,
 	}
 
-	cr.SetConditions(xpv1.Deleting())
+	cr.SetConditions(xpv2.Deleting())
 
 	err := c.client.Delete(ctx, parameters)
 	if err != nil {
