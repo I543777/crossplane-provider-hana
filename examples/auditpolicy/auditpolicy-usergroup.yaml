@@ -16,7 +16,7 @@ spec:
       - type: USERGROUP
         name: technical_user_group
       - type: USER
-        name: MONITORING_ADMIN
+        name: USER1
     auditLevel: INFO
     auditTrailRetention: 180
     enabled: true
