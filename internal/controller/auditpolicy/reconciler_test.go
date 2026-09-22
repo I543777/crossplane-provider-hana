@@ -551,37 +551,39 @@ func TestBuildDesiredParameters(t *testing.T) {
 		want   *v1alpha1.AuditPolicyParameters
 	}{
 		"UserGroupPrincipals": {
-			reason: "The desired parameters should carry and upper-case the principal user group",
+			reason: "The desired parameters should carry and upper-case a single user group principal",
 			cr: &v1alpha1.AuditPolicy{
 				Spec: v1alpha1.AuditPolicySpec{
 					ForProvider: v1alpha1.AuditPolicyParameters{
-						PolicyName:              "signavio_technical_user_connect",
-						AuditStatus:             "successful",
-						AuditActions:            []string{"connect"},
-						AuditPrincipalUserGroup: "technical_user_group",
-						AuditLevel:              "info",
+						PolicyName:   "signavio_technical_user_connect",
+						AuditStatus:  "successful",
+						AuditActions: []string{"connect"},
+						AuditPrincipals: []v1alpha1.AuditPrincipal{
+							{Type: "usergroup", Name: "technical_user_group"},
+						},
+						AuditLevel: "info",
 					},
 				},
 			},
 			want: &v1alpha1.AuditPolicyParameters{
-				PolicyName:              "SIGNAVIO_TECHNICAL_USER_CONNECT",
-				AuditStatus:             "SUCCESSFUL",
-				AuditActions:            []string{"CONNECT"},
-				AuditPrincipals:         []string{},
-				AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
-				AuditLevel:              "INFO",
+				PolicyName:   "SIGNAVIO_TECHNICAL_USER_CONNECT",
+				AuditStatus:  "SUCCESSFUL",
+				AuditActions: []string{"CONNECT"},
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+				},
+				AuditLevel: "INFO",
 			},
 		},
-		"ListPrincipals": {
-			reason: "The desired parameters should carry and upper-case the principal user list",
+		"NoPrincipals": {
+			reason: "The desired parameters should carry a nil principal list when none are configured",
 			cr: &v1alpha1.AuditPolicy{
 				Spec: v1alpha1.AuditPolicySpec{
 					ForProvider: v1alpha1.AuditPolicyParameters{
-						PolicyName:      "demo_audit_policy",
-						AuditStatus:     "successful",
-						AuditActions:    []string{"connect"},
-						AuditPrincipals: []string{"user_a", "user_b"},
-						AuditLevel:      "info",
+						PolicyName:   "demo_audit_policy",
+						AuditStatus:  "successful",
+						AuditActions: []string{"connect"},
+						AuditLevel:   "info",
 					},
 				},
 			},
@@ -589,8 +591,41 @@ func TestBuildDesiredParameters(t *testing.T) {
 				PolicyName:      "DEMO_AUDIT_POLICY",
 				AuditStatus:     "SUCCESSFUL",
 				AuditActions:    []string{"CONNECT"},
-				AuditPrincipals: []string{"USER_A", "USER_B"},
+				AuditPrincipals: nil,
 				AuditLevel:      "INFO",
+			},
+		},
+		"ExceptMixedPrincipals": {
+			reason: "The desired parameters should carry and upper-case an ordered, mixed principal list with the EXCEPT flag",
+			cr: &v1alpha1.AuditPolicy{
+				Spec: v1alpha1.AuditPolicySpec{
+					ForProvider: v1alpha1.AuditPolicyParameters{
+						PolicyName:   "except_principals_audit_policy1",
+						AuditStatus:  "successful",
+						AuditActions: []string{"actions"},
+						AuditPrincipals: []v1alpha1.AuditPrincipal{
+							{Type: "user", Name: "user1"},
+							{Type: "usergroup", Name: "usergroup1"},
+							{Type: "user", Name: "user2"},
+							{Type: "usergroup", Name: "usergroup2"},
+						},
+						ExceptPrincipals: true,
+						AuditLevel:       "critical",
+					},
+				},
+			},
+			want: &v1alpha1.AuditPolicyParameters{
+				PolicyName:   "EXCEPT_PRINCIPALS_AUDIT_POLICY1",
+				AuditStatus:  "SUCCESSFUL",
+				AuditActions: []string{"ACTIONS"},
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "USER1"},
+					{Type: "USERGROUP", Name: "USERGROUP1"},
+					{Type: "USER", Name: "USER2"},
+					{Type: "USERGROUP", Name: "USERGROUP2"},
+				},
+				ExceptPrincipals: true,
+				AuditLevel:       "CRITICAL",
 			},
 		},
 	}

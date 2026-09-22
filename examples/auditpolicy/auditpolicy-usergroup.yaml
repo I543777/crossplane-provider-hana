@@ -5,14 +5,18 @@ metadata:
 spec:
   forProvider:
     # Renders to:
-    # CREATE AUDIT POLICY AUDIT_USERGROUP_CONNECT AUDITING SUCCESSFUL CONNECT
-    #   FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180
+    # CREATE AUDIT POLICY AUDIT_USERGROUP_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS
+    # USERGROUP TECHNICAL_USER_GROUP AND USER USER1 LEVEL INFO TRAIL TYPE TABLE RETENTION 180
     policyName: AUDIT_USERGROUP_CONNECT
     auditStatus: SUCCESSFUL
     auditActions:
       - CONNECT
     # Restrict the policy to the members of a user group.
-    auditPrincipalUserGroup: technical_user_group
+    auditPrincipals:
+      - type: USERGROUP
+        name: technical_user_group
+      - type: USER
+        name: MONITORING_ADMIN
     auditLevel: INFO
     auditTrailRetention: 180
     enabled: true

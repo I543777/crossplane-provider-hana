@@ -201,48 +201,74 @@ func TestPrepareCreateSql(t *testing.T) {
 			},
 			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING ALL GRANT ANY, REVOKE ANY LEVEL INFO TRAIL TYPE TABLE RETENTION 30",
 		},
-		"UserGroup": {
-			reason: "The statement should contain a FOR PRINCIPALS USERGROUP clause when a user group is configured",
+		"SingleUser": {
+			reason: "The statement should contain a FOR PRINCIPALS USER clause for a single user principal",
 			args: args{
 				parameters: &v1alpha1.AuditPolicyParameters{
-					PolicyName:              "SIGNAVIO_TECHNICAL_USER_CONNECT",
-					AuditStatus:             "SUCCESSFUL",
-					AuditActions:            []string{"CONNECT"},
-					AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
-					AuditLevel:              "INFO",
-					AuditTrailRetention:     retention(180),
-				},
-			},
-			want: "CREATE AUDIT POLICY SIGNAVIO_TECHNICAL_USER_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
-		},
-		"Principals": {
-			reason: "The statement should contain a FOR PRINCIPALS clause when a list of users is configured",
-			args: args{
-				parameters: &v1alpha1.AuditPolicyParameters{
-					PolicyName:          "DEMO_AUDIT_POLICY",
-					AuditStatus:         "SUCCESSFUL",
-					AuditActions:        []string{"CONNECT"},
-					AuditPrincipals:     []string{"USER_A", "USER_B"},
+					PolicyName:   "DEMO_AUDIT_POLICY",
+					AuditStatus:  "SUCCESSFUL",
+					AuditActions: []string{"ACTIONS"},
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "USER_A"},
+					},
 					AuditLevel:          "INFO",
 					AuditTrailRetention: retention(180),
 				},
 			},
-			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USER_A, USER_B LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
 		},
-		"UserGroupTakesPrecedence": {
-			reason: "The user group should take precedence when both principals and a user group are configured",
+		"MixedPrincipals": {
+			reason: "The statement should render a mixed, ordered list of users and user groups",
 			args: args{
 				parameters: &v1alpha1.AuditPolicyParameters{
-					PolicyName:              "DEMO_AUDIT_POLICY",
-					AuditStatus:             "SUCCESSFUL",
-					AuditActions:            []string{"CONNECT"},
-					AuditPrincipals:         []string{"USER_A"},
-					AuditPrincipalUserGroup: "TECHNICAL_USER_GROUP",
-					AuditLevel:              "INFO",
-					AuditTrailRetention:     retention(180),
+					PolicyName:   "DEMO_AUDIT_POLICY",
+					AuditStatus:  "SUCCESSFUL",
+					AuditActions: []string{"ACTIONS"},
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "USER_A"},
+						{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+					},
+					AuditLevel:          "INFO",
+					AuditTrailRetention: retention(180),
 				},
 			},
-			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A, USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+		},
+		"UserGroupConnectScenario": {
+			reason: "Scenario 1: a successful CONNECT policy restricted to a user group",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:   "SIGNAVIO_TECHNICAL_USER_CONNECT",
+					AuditStatus:  "SUCCESSFUL",
+					AuditActions: []string{"CONNECT"},
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+					},
+					AuditLevel:          "INFO",
+					AuditTrailRetention: retention(180),
+				},
+			},
+			want: "CREATE AUDIT POLICY SIGNAVIO_TECHNICAL_USER_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+		},
+		"ExceptMixedPrincipalsScenario": {
+			reason: "Scenario 2: an EXCEPT FOR PRINCIPALS policy mixing users and user groups in order",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:   "EXCEPT_PRINCIPALS_AUDIT_POLICY1",
+					AuditStatus:  "SUCCESSFUL",
+					AuditActions: []string{"ACTIONS"},
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "USER1"},
+						{Type: "USERGROUP", Name: "USERGROUP1"},
+						{Type: "USER", Name: "USER2"},
+						{Type: "USERGROUP", Name: "USERGROUP2"},
+					},
+					ExceptPrincipals:    true,
+					AuditLevel:          "CRITICAL",
+					AuditTrailRetention: retention(7),
+				},
+			},
+			want: "CREATE AUDIT POLICY EXCEPT_PRINCIPALS_AUDIT_POLICY1 AUDITING SUCCESSFUL ACTIONS EXCEPT FOR PRINCIPALS USER USER1, USERGROUP USERGROUP1, USER USER2, USERGROUP USERGROUP2 LEVEL CRITICAL TRAIL TYPE TABLE RETENTION 7",
 		},
 	}
 	for name, tc := range cases {

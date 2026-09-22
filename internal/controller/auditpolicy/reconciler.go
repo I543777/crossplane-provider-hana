@@ -326,15 +326,31 @@ func buildObservedParameters(cr *v1alpha1.AuditPolicy) *v1alpha1.AuditPolicyObse
 
 func buildDesiredParameters(cr *v1alpha1.AuditPolicy) *v1alpha1.AuditPolicyParameters {
 	return &v1alpha1.AuditPolicyParameters{
-		PolicyName:              strings.ToUpper(cr.Spec.ForProvider.PolicyName),
-		AuditStatus:             strings.ToUpper(cr.Spec.ForProvider.AuditStatus),
-		AuditActions:            utils.ArrayToUpper(cr.Spec.ForProvider.AuditActions),
-		AuditLevel:              strings.ToUpper(cr.Spec.ForProvider.AuditLevel),
-		AuditPrincipals:         utils.ArrayToUpper(cr.Spec.ForProvider.AuditPrincipals),
-		AuditPrincipalUserGroup: strings.ToUpper(cr.Spec.ForProvider.AuditPrincipalUserGroup),
-		AuditTrailRetention:     cr.Spec.ForProvider.AuditTrailRetention,
-		Enabled:                 cr.Spec.ForProvider.Enabled,
+		PolicyName:          strings.ToUpper(cr.Spec.ForProvider.PolicyName),
+		AuditStatus:         strings.ToUpper(cr.Spec.ForProvider.AuditStatus),
+		AuditActions:        utils.ArrayToUpper(cr.Spec.ForProvider.AuditActions),
+		AuditLevel:          strings.ToUpper(cr.Spec.ForProvider.AuditLevel),
+		AuditPrincipals:     principalsToUpper(cr.Spec.ForProvider.AuditPrincipals),
+		ExceptPrincipals:    cr.Spec.ForProvider.ExceptPrincipals,
+		AuditTrailRetention: cr.Spec.ForProvider.AuditTrailRetention,
+		Enabled:             cr.Spec.ForProvider.Enabled,
 	}
+}
+
+// principalsToUpper upper-cases the type and name of each principal, keeping the
+// original ordering. It returns nil when no principals are configured.
+func principalsToUpper(principals []v1alpha1.AuditPrincipal) []v1alpha1.AuditPrincipal {
+	if len(principals) == 0 {
+		return nil
+	}
+	upper := make([]v1alpha1.AuditPrincipal, len(principals))
+	for i, p := range principals {
+		upper[i] = v1alpha1.AuditPrincipal{
+			Type: strings.ToUpper(p.Type),
+			Name: strings.ToUpper(p.Name),
+		}
+	}
+	return upper
 }
 
 func needsRecreation(observed *v1alpha1.AuditPolicyObservation, desired *v1alpha1.AuditPolicyParameters) bool {

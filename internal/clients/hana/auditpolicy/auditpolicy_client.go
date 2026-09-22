@@ -167,19 +167,27 @@ func prepareCreateSql(parameters *v1alpha1.AuditPolicyParameters) string {
 	return query
 }
 
-// preparePrincipalsClause builds the optional "FOR PRINCIPALS" clause of a
-// CREATE AUDIT POLICY statement. It supports restricting the policy either to a
-// user group ("FOR PRINCIPALS USERGROUP <usergroup>") or to an explicit list of
-// users ("FOR PRINCIPALS <user1>, <user2>"). The user group takes precedence if
-// both are set. An empty string is returned when no principals are configured.
+// preparePrincipalsClause builds the optional principal clause of a
+// CREATE AUDIT POLICY statement. It renders an ordered, mixed list of users and
+// user groups as "FOR PRINCIPALS USER <name>, USERGROUP <name>, ...". When
+// ExceptPrincipals is set, the clause is rendered as "EXCEPT FOR PRINCIPALS ..."
+// instead. An empty string is returned when no principals are configured.
 func preparePrincipalsClause(parameters *v1alpha1.AuditPolicyParameters) string {
-	if parameters.AuditPrincipalUserGroup != "" {
-		return fmt.Sprintf(" FOR PRINCIPALS USERGROUP %s", parameters.AuditPrincipalUserGroup)
+	if len(parameters.AuditPrincipals) == 0 {
+		return ""
 	}
-	if len(parameters.AuditPrincipals) > 0 {
-		return fmt.Sprintf(" FOR PRINCIPALS %s", strings.Join(parameters.AuditPrincipals, ", "))
+
+	principals := make([]string, 0, len(parameters.AuditPrincipals))
+	for _, principal := range parameters.AuditPrincipals {
+		principals = append(principals, fmt.Sprintf("%s %s", principal.Type, principal.Name))
 	}
-	return ""
+
+	clause := "FOR PRINCIPALS"
+	if parameters.ExceptPrincipals {
+		clause = "EXCEPT FOR PRINCIPALS"
+	}
+
+	return fmt.Sprintf(" %s %s", clause, strings.Join(principals, ", "))
 }
 
 func getSelectSql() string {

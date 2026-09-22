@@ -13,6 +13,19 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
+// AuditPrincipal identifies a single principal an audit policy applies to. It
+// maps to one "USER <name>" or "USERGROUP <name>" entry of the principal list
+// in a CREATE AUDIT POLICY statement.
+type AuditPrincipal struct {
+	// Type selects whether the principal is a single user or a user group.
+	// +kubebuilder:validation:Enum:=USER;USERGROUP
+	Type string `json:"type"`
+
+	// Name is the name of the user or user group.
+	// +kubebuilder:validation:Pattern:=`^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$`
+	Name string `json:"name"`
+}
+
 // AuditPolicyParameters are the configurable fields of a AuditPolicy.
 type AuditPolicyParameters struct {
 	PolicyName string `json:"policyName"`
@@ -29,22 +42,23 @@ type AuditPolicyParameters struct {
 	// +kubebuilder:validation:Enum:=EMERGENCY;ALERT;CRITICAL;WARNING;INFO
 	AuditLevel string `json:"auditLevel,omitempty"`
 
-	// AuditPrincipals is an optional list of users the audit policy applies to.
-	// It maps to the "FOR PRINCIPALS <user1>, <user2>" clause of the
-	// CREATE AUDIT POLICY statement. It is mutually exclusive with
-	// AuditPrincipalUserGroup.
-	// +kubebuilder:validation:items:Pattern:=`^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$`
-	// +listType=set
+	// AuditPrincipals is an optional, ordered list of principals (users and/or
+	// user groups) the audit policy applies to. It maps to the principal list of
+	// the "[EXCEPT] FOR PRINCIPALS ..." clause of the CREATE AUDIT POLICY
+	// statement and can mix users and user groups in any order, for example:
+	// "FOR PRINCIPALS USER user1, USERGROUP usergroup1, USER user2".
+	// Combine it with ExceptPrincipals to render "EXCEPT FOR PRINCIPALS ..."
+	// instead. It is only valid together with the ACTIONS audit action.
 	// +kubebuilder:validation:Optional
-	AuditPrincipals []string `json:"auditPrincipals,omitempty"`
+	AuditPrincipals []AuditPrincipal `json:"auditPrincipals,omitempty"`
 
-	// AuditPrincipalUserGroup is an optional user group the audit policy applies
-	// to. It maps to the "FOR PRINCIPALS USERGROUP <usergroup>" clause of the
-	// CREATE AUDIT POLICY statement. It is mutually exclusive with
-	// AuditPrincipals.
-	// +kubebuilder:validation:Pattern:=`^[^",\$'\+<>|\[\]\{\}\(\)!%,/:;=\?@\\^~\x60]+$`
+	// ExceptPrincipals, when set to true, renders the principal clause as
+	// "EXCEPT FOR PRINCIPALS ..." instead of "FOR PRINCIPALS ...", meaning the
+	// audit policy applies to everyone except the configured principals. It has
+	// no effect when no principals are configured.
+	// +kubebuilder:default:=false
 	// +kubebuilder:validation:Optional
-	AuditPrincipalUserGroup string `json:"auditPrincipalUserGroup,omitempty"`
+	ExceptPrincipals bool `json:"exceptPrincipals,omitempty"`
 
 	// +kubebuilder:default:=7
 	AuditTrailRetention *int `json:"auditTrailRetention,omitempty"`
