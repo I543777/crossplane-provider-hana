@@ -50,60 +50,8 @@ func (c Client) Read(ctx context.Context, parameters *v1alpha1.AuditPolicyParame
 	seenPrincipals := make(map[v1alpha1.AuditPrincipal]struct{})
 
 	for policyActionRows.Next() {
-		var policyName string
-		var eventStatus string
-		var eventAction sql.NullString
-		var eventLevel string
-		var retentionPeriod sql.NullInt64
-		var isActive string
-		var principalName sql.NullString
-		var exceptPrincipalName sql.NullString
-		var principalType sql.NullString
-		err = policyActionRows.Scan(&policyName, &eventStatus, &eventAction, &eventLevel, &retentionPeriod, &isActive, &principalName, &exceptPrincipalName, &principalType)
-		if err != nil {
+		if err = scanPolicyRow(policyActionRows, observed, seenActions, seenPrincipals); err != nil {
 			return nil, err
-		}
-		observed.PolicyName = policyName
-		observed.AuditStatus = strings.TrimSuffix(eventStatus, " EVENTS")
-		if eventAction.Valid {
-			if _, ok := seenActions[eventAction.String]; !ok {
-				seenActions[eventAction.String] = struct{}{}
-				observed.AuditActions = append(observed.AuditActions, eventAction.String)
-			}
-		}
-		observed.AuditLevel = eventLevel
-		if retentionPeriod.Valid {
-			rp := int(retentionPeriod.Int64)
-			observed.AuditTrailRetention = &rp
-		}
-		if isActive == "TRUE" {
-			observed.Enabled = new(true)
-		} else {
-			observed.Enabled = new(false)
-		}
-
-		// Parse the principal clause. HANA's AUDIT_POLICIES view populates
-		// PRINCIPAL_NAME for a plain "FOR PRINCIPALS ..." clause and
-		// EXCEPT_PRINCIPAL_NAME for an "EXCEPT FOR PRINCIPALS ..." clause.
-		// PRINCIPAL_NAME/EXCEPT_PRINCIPAL_NAME cover both USER and USERGROUP
-		// principals, so we rely on them (and PRINCIPAL_TYPE) rather than the
-		// legacy USER_NAME/EXCEPT_USERNAME columns.
-		var resolvedName string
-		switch {
-		case principalName.Valid && principalName.String != "":
-			// "FOR PRINCIPALS ..." -> ExceptPrincipals stays false.
-			resolvedName = principalName.String
-		case exceptPrincipalName.Valid && exceptPrincipalName.String != "":
-			// "EXCEPT FOR PRINCIPALS ..."
-			observed.ExceptPrincipals = true
-			resolvedName = exceptPrincipalName.String
-		default:
-			continue
-		}
-		principal := v1alpha1.AuditPrincipal{Type: principalType.String, Name: resolvedName}
-		if _, ok := seenPrincipals[principal]; !ok {
-			seenPrincipals[principal] = struct{}{}
-			observed.AuditPrincipals = append(observed.AuditPrincipals, principal)
 		}
 	}
 
@@ -112,6 +60,71 @@ func (c Client) Read(ctx context.Context, parameters *v1alpha1.AuditPolicyParame
 	}
 
 	return observed, nil
+}
+
+// scanPolicyRow scans a single row from the AUDIT_POLICIES query and merges it
+// into observed, de-duplicating actions and principals via the provided sets.
+func scanPolicyRow(rows *sql.Rows, observed *v1alpha1.AuditPolicyObservation, seenActions map[string]struct{}, seenPrincipals map[v1alpha1.AuditPrincipal]struct{}) error {
+	var policyName string
+	var eventStatus string
+	var eventAction sql.NullString
+	var eventLevel string
+	var retentionPeriod sql.NullInt64
+	var isActive string
+	var principalName sql.NullString
+	var exceptPrincipalName sql.NullString
+	var principalType sql.NullString
+	if err := rows.Scan(&policyName, &eventStatus, &eventAction, &eventLevel, &retentionPeriod, &isActive, &principalName, &exceptPrincipalName, &principalType); err != nil {
+		return err
+	}
+
+	observed.PolicyName = policyName
+	observed.AuditStatus = strings.TrimSuffix(eventStatus, " EVENTS")
+	if eventAction.Valid {
+		if _, ok := seenActions[eventAction.String]; !ok {
+			seenActions[eventAction.String] = struct{}{}
+			observed.AuditActions = append(observed.AuditActions, eventAction.String)
+		}
+	}
+	observed.AuditLevel = eventLevel
+	if retentionPeriod.Valid {
+		rp := int(retentionPeriod.Int64)
+		observed.AuditTrailRetention = &rp
+	}
+	enabled := isActive == "TRUE"
+	observed.Enabled = &enabled
+
+	mergePrincipal(observed, seenPrincipals, principalName, exceptPrincipalName, principalType)
+	return nil
+}
+
+// mergePrincipal parses the principal clause of a single row and appends the
+// resolved principal to observed (de-duplicated via seenPrincipals).
+//
+// HANA's AUDIT_POLICIES view populates PRINCIPAL_NAME for a plain
+// "FOR PRINCIPALS ..." clause and EXCEPT_PRINCIPAL_NAME for an
+// "EXCEPT FOR PRINCIPALS ..." clause. PRINCIPAL_NAME/EXCEPT_PRINCIPAL_NAME cover
+// both USER and USERGROUP principals, so we rely on them (and PRINCIPAL_TYPE)
+// rather than the legacy USER_NAME/EXCEPT_USERNAME columns.
+func mergePrincipal(observed *v1alpha1.AuditPolicyObservation, seenPrincipals map[v1alpha1.AuditPrincipal]struct{}, principalName, exceptPrincipalName, principalType sql.NullString) {
+	var resolvedName string
+	switch {
+	case principalName.Valid && principalName.String != "":
+		// "FOR PRINCIPALS ..." -> ExceptPrincipals stays false.
+		resolvedName = principalName.String
+	case exceptPrincipalName.Valid && exceptPrincipalName.String != "":
+		// "EXCEPT FOR PRINCIPALS ..."
+		observed.ExceptPrincipals = true
+		resolvedName = exceptPrincipalName.String
+	default:
+		return
+	}
+
+	principal := v1alpha1.AuditPrincipal{Type: principalType.String, Name: resolvedName}
+	if _, ok := seenPrincipals[principal]; !ok {
+		seenPrincipals[principal] = struct{}{}
+		observed.AuditPrincipals = append(observed.AuditPrincipals, principal)
+	}
 }
 
 // Create a new audit policy
