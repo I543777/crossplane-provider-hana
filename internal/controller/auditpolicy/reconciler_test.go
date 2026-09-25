@@ -639,3 +639,85 @@ func TestBuildDesiredParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestPrincipalsDiffer(t *testing.T) {
+	cases := map[string]struct {
+		reason   string
+		observed *v1alpha1.AuditPolicyObservation
+		desired  *v1alpha1.AuditPolicyParameters
+		want     bool
+	}{
+		"NoPrincipalsEqual": {
+			reason:   "No principals on either side is not a difference",
+			observed: &v1alpha1.AuditPolicyObservation{},
+			desired:  &v1alpha1.AuditPolicyParameters{},
+			want:     false,
+		},
+		"SamePrincipalsDifferentOrder": {
+			reason: "Principal comparison is order-independent",
+			observed: &v1alpha1.AuditPolicyObservation{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+				},
+			},
+			desired: &v1alpha1.AuditPolicyParameters{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+					{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+				},
+			},
+			want: false,
+		},
+		"AddedPrincipal": {
+			reason: "Adding a principal is a difference",
+			observed: &v1alpha1.AuditPolicyObservation{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+				},
+			},
+			desired: &v1alpha1.AuditPolicyParameters{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+					{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+				},
+			},
+			want: true,
+		},
+		"FlippedExceptPrincipals": {
+			reason: "Flipping ExceptPrincipals with principals configured is a difference",
+			observed: &v1alpha1.AuditPolicyObservation{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+				},
+				ExceptPrincipals: false,
+			},
+			desired: &v1alpha1.AuditPolicyParameters{
+				AuditPrincipals: []v1alpha1.AuditPrincipal{
+					{Type: "USER", Name: "MONITORING_ADMIN"},
+				},
+				ExceptPrincipals: true,
+			},
+			want: true,
+		},
+		"ExceptPrincipalsIgnoredWhenNoPrincipals": {
+			reason: "ExceptPrincipals is irrelevant when no principals are configured",
+			observed: &v1alpha1.AuditPolicyObservation{
+				ExceptPrincipals: false,
+			},
+			desired: &v1alpha1.AuditPolicyParameters{
+				ExceptPrincipals: true,
+			},
+			want: false,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := principalsDiffer(tc.observed, tc.desired)
+			if got != tc.want {
+				t.Errorf("\n%s\nprincipalsDiffer(...): want %v, got %v", tc.reason, tc.want, got)
+			}
+		})
+	}
+}

@@ -80,6 +80,11 @@ func (in *AuditPolicyObservation) DeepCopyInto(out *AuditPolicyObservation) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AuditPrincipals != nil {
+		in, out := &in.AuditPrincipals, &out.AuditPrincipals
+		*out = make([]AuditPrincipal, len(*in))
+		copy(*out, *in)
+	}
 	if in.AuditTrailRetention != nil {
 		in, out := &in.AuditTrailRetention, &out.AuditTrailRetention
 		*out = new(int)

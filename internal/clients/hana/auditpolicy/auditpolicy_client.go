@@ -43,6 +43,12 @@ func (c Client) Read(ctx context.Context, parameters *v1alpha1.AuditPolicyParame
 	}
 	defer policyActionRows.Close() //nolint:errcheck
 
+	// Principals and actions can appear across multiple rows (HANA returns one
+	// row per principal, repeating the action), so de-duplicate both while
+	// preserving first-seen order.
+	seenActions := make(map[string]struct{})
+	seenPrincipals := make(map[v1alpha1.AuditPrincipal]struct{})
+
 	for policyActionRows.Next() {
 		var policyName string
 		var eventStatus string
@@ -50,14 +56,20 @@ func (c Client) Read(ctx context.Context, parameters *v1alpha1.AuditPolicyParame
 		var eventLevel string
 		var retentionPeriod sql.NullInt64
 		var isActive string
-		err = policyActionRows.Scan(&policyName, &eventStatus, &eventAction, &eventLevel, &retentionPeriod, &isActive)
+		var principalName sql.NullString
+		var exceptPrincipalName sql.NullString
+		var principalType sql.NullString
+		err = policyActionRows.Scan(&policyName, &eventStatus, &eventAction, &eventLevel, &retentionPeriod, &isActive, &principalName, &exceptPrincipalName, &principalType)
 		if err != nil {
 			return nil, err
 		}
 		observed.PolicyName = policyName
 		observed.AuditStatus = strings.TrimSuffix(eventStatus, " EVENTS")
 		if eventAction.Valid {
-			observed.AuditActions = append(observed.AuditActions, eventAction.String)
+			if _, ok := seenActions[eventAction.String]; !ok {
+				seenActions[eventAction.String] = struct{}{}
+				observed.AuditActions = append(observed.AuditActions, eventAction.String)
+			}
 		}
 		observed.AuditLevel = eventLevel
 		if retentionPeriod.Valid {
@@ -68,6 +80,30 @@ func (c Client) Read(ctx context.Context, parameters *v1alpha1.AuditPolicyParame
 			observed.Enabled = new(true)
 		} else {
 			observed.Enabled = new(false)
+		}
+
+		// Parse the principal clause. HANA's AUDIT_POLICIES view populates
+		// PRINCIPAL_NAME for a plain "FOR PRINCIPALS ..." clause and
+		// EXCEPT_PRINCIPAL_NAME for an "EXCEPT FOR PRINCIPALS ..." clause.
+		// PRINCIPAL_NAME/EXCEPT_PRINCIPAL_NAME cover both USER and USERGROUP
+		// principals, so we rely on them (and PRINCIPAL_TYPE) rather than the
+		// legacy USER_NAME/EXCEPT_USERNAME columns.
+		var resolvedName string
+		switch {
+		case principalName.Valid && principalName.String != "":
+			// "FOR PRINCIPALS ..." -> ExceptPrincipals stays false.
+			resolvedName = principalName.String
+		case exceptPrincipalName.Valid && exceptPrincipalName.String != "":
+			// "EXCEPT FOR PRINCIPALS ..."
+			observed.ExceptPrincipals = true
+			resolvedName = exceptPrincipalName.String
+		default:
+			continue
+		}
+		principal := v1alpha1.AuditPrincipal{Type: principalType.String, Name: resolvedName}
+		if _, ok := seenPrincipals[principal]; !ok {
+			seenPrincipals[principal] = struct{}{}
+			observed.AuditPrincipals = append(observed.AuditPrincipals, principal)
 		}
 	}
 
@@ -179,6 +215,12 @@ func preparePrincipalsClause(parameters *v1alpha1.AuditPolicyParameters) string 
 
 	principals := make([]string, 0, len(parameters.AuditPrincipals))
 	for _, principal := range parameters.AuditPrincipals {
+		// HANA's CREATE AUDIT POLICY principal list expects unquoted
+		// identifiers (e.g. "USER USER1, USERGROUP TECHNICAL_USER_GROUP").
+		// Double-quoting the name triggers a "SQL syntax error near \"" (257).
+		// Principal names are validated by the CRD (no quotes, spaces or other
+		// special characters) and are upper-cased upstream, so it is safe to
+		// render them unquoted. The type is a validated enum (USER/USERGROUP).
 		principals = append(principals, fmt.Sprintf("%s %s", principal.Type, principal.Name))
 	}
 
@@ -191,7 +233,7 @@ func preparePrincipalsClause(parameters *v1alpha1.AuditPolicyParameters) string 
 }
 
 func getSelectSql() string {
-	return "SELECT AUDIT_POLICY_NAME, EVENT_STATUS, EVENT_ACTION, EVENT_LEVEL, RETENTION_PERIOD, IS_AUDIT_POLICY_ACTIVE FROM AUDIT_POLICIES WHERE AUDIT_POLICY_NAME = ?"
+	return "SELECT AUDIT_POLICY_NAME, EVENT_STATUS, EVENT_ACTION, EVENT_LEVEL, RETENTION_PERIOD, IS_AUDIT_POLICY_ACTIVE, PRINCIPAL_NAME, EXCEPT_PRINCIPAL_NAME, PRINCIPAL_TYPE FROM AUDIT_POLICIES WHERE AUDIT_POLICY_NAME = ?"
 }
 
 func prepareEnableDisablePolicySql(parameters *v1alpha1.AuditPolicyParameters) string {

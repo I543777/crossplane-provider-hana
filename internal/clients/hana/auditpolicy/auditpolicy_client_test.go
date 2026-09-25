@@ -87,6 +87,76 @@ func TestRead(t *testing.T) {
 				err: nil,
 			},
 		},
+		"ForPrincipals": {
+			reason: "A FOR PRINCIPALS policy populates PRINCIPAL_NAME; principals are observed with ExceptPrincipals=false and repeated actions are de-duplicated",
+			fields: fields{
+				db: fake.MockDB{
+					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
+						rows := sqlmock.NewRows(cols).
+							AddRow("DEMO_AUDIT_POLICY", "SUCCESSFUL EVENTS", "ACTIONS", "CRITICAL", 7, "TRUE", "MONITORING_ADMIN", nil, "USER").
+							AddRow("DEMO_AUDIT_POLICY", "SUCCESSFUL EVENTS", "ACTIONS", "CRITICAL", 7, "TRUE", "TECHNICAL_USER_GROUP", nil, "USERGROUP")
+						return fake.MockRowsToSQLRows(rows), nil
+					},
+				},
+			},
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName: "DEMO_AUDIT_POLICY",
+				},
+			},
+			want: want{
+				observed: &v1alpha1.AuditPolicyObservation{
+					PolicyName:          "DEMO_AUDIT_POLICY",
+					AuditActions:        []string{"ACTIONS"},
+					AuditStatus:         "SUCCESSFUL",
+					AuditLevel:          "CRITICAL",
+					AuditTrailRetention: func(i int) *int { return &i }(7),
+					Enabled:             func(b bool) *bool { return &b }(true),
+					ExceptPrincipals:    false,
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "MONITORING_ADMIN"},
+						{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+					},
+				},
+				err: nil,
+			},
+		},
+		"ExceptForPrincipals": {
+			reason: "An EXCEPT FOR PRINCIPALS policy populates EXCEPT_PRINCIPAL_NAME; principals are observed with ExceptPrincipals=true",
+			fields: fields{
+				db: fake.MockDB{
+					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
+						rows := sqlmock.NewRows(cols).
+							AddRow("DEMO_AUDIT_POLICY", "SUCCESSFUL EVENTS", "ACTIONS", "CRITICAL", 7, "FALSE", nil, "MONITORING_ADMIN", "USER").
+							AddRow("DEMO_AUDIT_POLICY", "SUCCESSFUL EVENTS", "ACTIONS", "CRITICAL", 7, "FALSE", nil, "TECHNICAL_USER_GROUP", "USERGROUP")
+						return fake.MockRowsToSQLRows(rows), nil
+					},
+				},
+			},
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName: "DEMO_AUDIT_POLICY",
+				},
+			},
+			want: want{
+				observed: &v1alpha1.AuditPolicyObservation{
+					PolicyName:          "DEMO_AUDIT_POLICY",
+					AuditActions:        []string{"ACTIONS"},
+					AuditStatus:         "SUCCESSFUL",
+					AuditLevel:          "CRITICAL",
+					AuditTrailRetention: func(i int) *int { return &i }(7),
+					Enabled:             func(b bool) *bool { return &b }(false),
+					ExceptPrincipals:    true,
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "MONITORING_ADMIN"},
+						{Type: "USERGROUP", Name: "TECHNICAL_USER_GROUP"},
+					},
+				},
+				err: nil,
+			},
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -215,7 +285,7 @@ func TestPrepareCreateSql(t *testing.T) {
 					AuditTrailRetention: retention(180),
 				},
 			},
-			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+			want: `CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A LEVEL INFO TRAIL TYPE TABLE RETENTION 180`,
 		},
 		"MixedPrincipals": {
 			reason: "The statement should render a mixed, ordered list of users and user groups",
@@ -232,7 +302,7 @@ func TestPrepareCreateSql(t *testing.T) {
 					AuditTrailRetention: retention(180),
 				},
 			},
-			want: "CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A, USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+			want: `CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER USER_A, USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180`,
 		},
 		"UserGroupConnectScenario": {
 			reason: "Scenario 1: a successful CONNECT policy restricted to a user group",
@@ -248,7 +318,7 @@ func TestPrepareCreateSql(t *testing.T) {
 					AuditTrailRetention: retention(180),
 				},
 			},
-			want: "CREATE AUDIT POLICY SIGNAVIO_TECHNICAL_USER_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180",
+			want: `CREATE AUDIT POLICY SIGNAVIO_TECHNICAL_USER_CONNECT AUDITING SUCCESSFUL CONNECT FOR PRINCIPALS USERGROUP TECHNICAL_USER_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180`,
 		},
 		"ExceptMixedPrincipalsScenario": {
 			reason: "Scenario 2: an EXCEPT FOR PRINCIPALS policy mixing users and user groups in order",
@@ -268,7 +338,24 @@ func TestPrepareCreateSql(t *testing.T) {
 					AuditTrailRetention: retention(7),
 				},
 			},
-			want: "CREATE AUDIT POLICY EXCEPT_PRINCIPALS_AUDIT_POLICY1 AUDITING SUCCESSFUL ACTIONS EXCEPT FOR PRINCIPALS USER USER1, USERGROUP USERGROUP1, USER USER2, USERGROUP USERGROUP2 LEVEL CRITICAL TRAIL TYPE TABLE RETENTION 7",
+			want: `CREATE AUDIT POLICY EXCEPT_PRINCIPALS_AUDIT_POLICY1 AUDITING SUCCESSFUL ACTIONS EXCEPT FOR PRINCIPALS USER USER1, USERGROUP USERGROUP1, USER USER2, USERGROUP USERGROUP2 LEVEL CRITICAL TRAIL TYPE TABLE RETENTION 7`,
+		},
+		"PrincipalNamesNotQuoted": {
+			reason: "Principal names must be rendered unquoted; HANA rejects double-quoted identifiers in the principal list",
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName:   "DEMO_AUDIT_POLICY",
+					AuditStatus:  "SUCCESSFUL",
+					AuditActions: []string{"ACTIONS"},
+					AuditPrincipals: []v1alpha1.AuditPrincipal{
+						{Type: "USER", Name: "MY_USER"},
+						{Type: "USERGROUP", Name: "MY_GROUP"},
+					},
+					AuditLevel:          "INFO",
+					AuditTrailRetention: retention(180),
+				},
+			},
+			want: `CREATE AUDIT POLICY DEMO_AUDIT_POLICY AUDITING SUCCESSFUL ACTIONS FOR PRINCIPALS USER MY_USER, USERGROUP MY_GROUP LEVEL INFO TRAIL TYPE TABLE RETENTION 180`,
 		},
 	}
 	for name, tc := range cases {
