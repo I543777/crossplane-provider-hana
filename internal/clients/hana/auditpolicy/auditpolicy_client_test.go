@@ -18,6 +18,7 @@ const (
 	testAuditPolicyName    = "DEMO_AUDIT_POLICY"
 	successCaseName        = "Success"
 	infoAuditLevel         = "INFO"
+	criticalAuditLevel     = "CRITICAL"
 	testAuditAction        = "ACTIONS"
 	successfulAuditStatus  = "SUCCESSFUL"
 	userPrincipalType      = "USER"
@@ -104,8 +105,8 @@ func TestRead(t *testing.T) {
 					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
 						rows := sqlmock.NewRows(cols).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", "MONITORING_ADMIN", nil, userPrincipalType).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", "TECHNICAL_USER_GROUP", nil, usergroupPrincipalType)
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, criticalAuditLevel, 7, "TRUE", "MONITORING_ADMIN", nil, userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, criticalAuditLevel, 7, "TRUE", "TECHNICAL_USER_GROUP", nil, usergroupPrincipalType)
 						return fake.MockRowsToSQLRows(rows), nil
 					},
 				},
@@ -120,7 +121,7 @@ func TestRead(t *testing.T) {
 					PolicyName:          testAuditPolicyName,
 					AuditActions:        []string{testAuditAction},
 					AuditStatus:         successfulAuditStatus,
-					AuditLevel:          "CRITICAL",
+					AuditLevel:          criticalAuditLevel,
 					AuditTrailRetention: func(i int) *int { return &i }(7),
 					Enabled:             func(b bool) *bool { return &b }(true),
 					ExceptPrincipals:    false,
@@ -139,8 +140,8 @@ func TestRead(t *testing.T) {
 					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
 						rows := sqlmock.NewRows(cols).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "FALSE", nil, "MONITORING_ADMIN", userPrincipalType).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "FALSE", nil, "TECHNICAL_USER_GROUP", usergroupPrincipalType)
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, criticalAuditLevel, 7, "FALSE", nil, "MONITORING_ADMIN", userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, criticalAuditLevel, 7, "FALSE", nil, "TECHNICAL_USER_GROUP", usergroupPrincipalType)
 						return fake.MockRowsToSQLRows(rows), nil
 					},
 				},
@@ -155,7 +156,7 @@ func TestRead(t *testing.T) {
 					PolicyName:          testAuditPolicyName,
 					AuditActions:        []string{testAuditAction},
 					AuditStatus:         successfulAuditStatus,
-					AuditLevel:          "CRITICAL",
+					AuditLevel:          criticalAuditLevel,
 					AuditTrailRetention: func(i int) *int { return &i }(7),
 					Enabled:             func(b bool) *bool { return &b }(false),
 					ExceptPrincipals:    true,
@@ -174,7 +175,7 @@ func TestRead(t *testing.T) {
 					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
 						rows := sqlmock.NewRows(cols).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", allUsersSentinel, nil, nil)
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, criticalAuditLevel, 7, "TRUE", allUsersSentinel, nil, nil)
 						return fake.MockRowsToSQLRows(rows), nil
 					},
 				},
@@ -189,7 +190,7 @@ func TestRead(t *testing.T) {
 					PolicyName:          testAuditPolicyName,
 					AuditActions:        []string{testAuditAction},
 					AuditStatus:         successfulAuditStatus,
-					AuditLevel:          "CRITICAL",
+					AuditLevel:          criticalAuditLevel,
 					AuditTrailRetention: func(i int) *int { return &i }(7),
 					Enabled:             func(b bool) *bool { return &b }(true),
 					ExceptPrincipals:    false,
@@ -205,9 +206,9 @@ func TestRead(t *testing.T) {
 					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
 						rows := sqlmock.NewRows(cols).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "GRANT ANY", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType)
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", criticalAuditLevel, 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "GRANT ANY", criticalAuditLevel, 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", criticalAuditLevel, 7, "TRUE", allUsersSentinel, nil, userPrincipalType)
 						return fake.MockRowsToSQLRows(rows), nil
 					},
 				},
@@ -222,7 +223,7 @@ func TestRead(t *testing.T) {
 					PolicyName:          testAuditPolicyName,
 					AuditActions:        []string{"CONNECT", "GRANT ANY"},
 					AuditStatus:         successfulAuditStatus,
-					AuditLevel:          "CRITICAL",
+					AuditLevel:          criticalAuditLevel,
 					AuditTrailRetention: func(i int) *int { return &i }(7),
 					Enabled:             func(b bool) *bool { return &b }(true),
 					ExceptPrincipals:    false,
@@ -408,7 +409,7 @@ func TestPrepareCreateSql(t *testing.T) {
 						{Type: usergroupPrincipalType, Name: "USERGROUP2"},
 					},
 					ExceptPrincipals:    true,
-					AuditLevel:          "CRITICAL",
+					AuditLevel:          criticalAuditLevel,
 					AuditTrailRetention: retention(7),
 				},
 			},
