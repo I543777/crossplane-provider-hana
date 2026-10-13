@@ -167,6 +167,37 @@ func TestRead(t *testing.T) {
 				err: nil,
 			},
 		},
+		"NoPrincipalsAllUsersSentinel": {
+			reason: "A policy without a principal clause reports PRINCIPAL_NAME as the 'ALL USERS' sentinel, which must be ignored so no principals are observed",
+			fields: fields{
+				db: fake.MockDB{
+					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
+						rows := sqlmock.NewRows(cols).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", "ALL USERS", nil, nil)
+						return fake.MockRowsToSQLRows(rows), nil
+					},
+				},
+			},
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName: testAuditPolicyName,
+				},
+			},
+			want: want{
+				observed: &v1alpha1.AuditPolicyObservation{
+					PolicyName:          testAuditPolicyName,
+					AuditActions:        []string{testAuditAction},
+					AuditStatus:         successfulAuditStatus,
+					AuditLevel:          "CRITICAL",
+					AuditTrailRetention: func(i int) *int { return &i }(7),
+					Enabled:             func(b bool) *bool { return &b }(true),
+					ExceptPrincipals:    false,
+					AuditPrincipals:     nil,
+				},
+				err: nil,
+			},
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
