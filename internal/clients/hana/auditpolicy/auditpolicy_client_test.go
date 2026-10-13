@@ -174,7 +174,7 @@ func TestRead(t *testing.T) {
 					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
 						rows := sqlmock.NewRows(cols).
-							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", "ALL USERS", nil, nil)
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", testAuditAction, "CRITICAL", 7, "TRUE", allUsersSentinel, nil, nil)
 						return fake.MockRowsToSQLRows(rows), nil
 					},
 				},
@@ -188,6 +188,39 @@ func TestRead(t *testing.T) {
 				observed: &v1alpha1.AuditPolicyObservation{
 					PolicyName:          testAuditPolicyName,
 					AuditActions:        []string{testAuditAction},
+					AuditStatus:         successfulAuditStatus,
+					AuditLevel:          "CRITICAL",
+					AuditTrailRetention: func(i int) *int { return &i }(7),
+					Enabled:             func(b bool) *bool { return &b }(true),
+					ExceptPrincipals:    false,
+					AuditPrincipals:     nil,
+				},
+				err: nil,
+			},
+		},
+		"NoPrincipalsAllUsersSentinelMultiRow": {
+			reason: "Multiple sentinel rows (one per action, even with a non-null PRINCIPAL_TYPE) must all be ignored while actions are de-duplicated into an ordered list",
+			fields: fields{
+				db: fake.MockDB{
+					MockQueryContext: func(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+						cols := []string{"AUDIT_POLICY_NAME", "EVENT_STATUS", "EVENT_ACTION", "EVENT_LEVEL", "RETENTION_PERIOD", "IS_AUDIT_POLICY_ACTIVE", "PRINCIPAL_NAME", "EXCEPT_PRINCIPAL_NAME", "PRINCIPAL_TYPE"}
+						rows := sqlmock.NewRows(cols).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "GRANT ANY", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType).
+							AddRow(testAuditPolicyName, "SUCCESSFUL EVENTS", "CONNECT", "CRITICAL", 7, "TRUE", allUsersSentinel, nil, userPrincipalType)
+						return fake.MockRowsToSQLRows(rows), nil
+					},
+				},
+			},
+			args: args{
+				parameters: &v1alpha1.AuditPolicyParameters{
+					PolicyName: testAuditPolicyName,
+				},
+			},
+			want: want{
+				observed: &v1alpha1.AuditPolicyObservation{
+					PolicyName:          testAuditPolicyName,
+					AuditActions:        []string{"CONNECT", "GRANT ANY"},
 					AuditStatus:         successfulAuditStatus,
 					AuditLevel:          "CRITICAL",
 					AuditTrailRetention: func(i int) *int { return &i }(7),

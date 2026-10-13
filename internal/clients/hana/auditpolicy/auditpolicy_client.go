@@ -122,7 +122,7 @@ func mergePrincipal(observed *v1alpha1.AuditPolicyObservation, seenPrincipals ma
 	case principalName.Valid && principalName.String != "" && principalName.String != allUsersSentinel:
 		// "FOR PRINCIPALS ..." -> ExceptPrincipals stays false.
 		resolvedName = principalName.String
-	case exceptPrincipalName.Valid && exceptPrincipalName.String != "" && exceptPrincipalName.String != allUsersSentinel:
+	case exceptPrincipalName.Valid && exceptPrincipalName.String != "":
 		// "EXCEPT FOR PRINCIPALS ..."
 		observed.ExceptPrincipals = true
 		resolvedName = exceptPrincipalName.String
